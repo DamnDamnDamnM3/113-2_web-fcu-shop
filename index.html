@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>逢甲大學販賣部</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            color: #333;
+            margin: 0;
+        }
+
+        .login-section {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .login-section input[type="text"],
+        .login-section input[type="password"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .login-section button {
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .login-section button:hover {
+            background-color: #0056b3;
+        }
+
+        .login-status {
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .product-item {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .product-item img {
+            max-width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .product-item h3 {
+            margin: 10px 0 5px;
+            color: #333;
+        }
+
+        .product-item p {
+            color: #777;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .product-item button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .product-item button:hover {
+            background-color: #218838;
+        }
+
+        .product-item button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .quantity-input-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 10px;
+            visibility: hidden;
+            /* Hidden by default */
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s ease;
+            height: 0;
+            overflow: hidden;
+        }
+
+        .quantity-input-group.active {
+            visibility: visible;
+            opacity: 1;
+            height: auto;
+            overflow: visible;
+        }
+
+        .quantity-input-group input {
+            width: 60px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .quantity-input-group button {
+            padding: 8px 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 0;
+            /* Override default button margin */
+        }
+
+        .quantity-input-group button:hover {
+            background-color: #0056b3;
+        }
+
+        .cart-section {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .cart-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        #cart-items {
+            list-style: none;
+            padding: 0;
+        }
+
+        #cart-items li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px dashed #eee;
+        }
+
+        #cart-items li:last-child {
+            border-bottom: none;
+        }
+
+        #cart-items li span {
+            flex: 1;
+        }
+
+        #cart-items li .item-details {
+            display: flex;
+            flex-direction: column;
+            flex: 2;
+        }
+
+        #cart-items li .item-details strong {
+            font-size: 1.1em;
+        }
+
+        #cart-items li .item-details span {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .cart-item-controls {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .cart-item-controls input {
+            width: 50px;
+            padding: 5px;
+            text-align: center;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .cart-item-controls button {
+            padding: 5px 10px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .cart-item-controls button:hover {
+            background-color: #c82333;
+        }
+
+        .cart-summary {
+            margin-top: 20px;
+            text-align: right;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .cart-actions button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .cart-actions button:hover {
+            background-color: #0056b3;
+        }
+
+        #checkout-message {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+            text-align: center;
+            display: none;
+            /* Hidden by default */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>逢甲大學販賣部</h1>
+            <div class="login-section">
+                <div id="login-form">
+                    <input type="text" id="username" placeholder="帳號">
+                    <input type="password" id="password" placeholder="密碼">
+                    <button id="login-button">登入</button>
+                </div>
+                <div id="login-status" class="login-status" style="display: none;"></div>
+                <button id="logout-button" style="display: none;">登出</button>
+            </div>
+        </header>
+
+        <section class="products-grid" id="products-container">
+        </section>
+
+        <section class="cart-section">
+            <h2>購物車</h2>
+            <ul id="cart-items">
+            </ul>
+            <div class="cart-summary">
+                <p>總金額: $<span id="subtotal">0</span></p>
+                <p>運費: $<span id="shipping-fee">0</span></p>
+                <p>應付總額: $<span id="total-amount">0</span></p>
+            </div>
+            <div class="cart-actions">
+                <button id="checkout-button">結帳</button>
+            </div>
+            <div id="checkout-message"></div>
+        </section>
+    </div>
+
+    <script>
+        // Data for products
+        const products = [
+            { id: 1, name: '逢甲大學紀念T恤', price: 350 },
+            { id: 2, name: 'FCU馬克杯', price: 200 },
+            { id: 3, name: '逢甲大學紀念原子筆', price: 80 },
+            { id: 4, name: '逢甲大學帆布袋', price: 280 },
+            { id: 5, name: 'FCU鑰匙圈', price: 120 },
+            { id: 6, name: '逢甲大學記事本', price: 150 }
+        ];
+
+        // 獨立的圖片 URL 陣列，順序需與 products 的 id 保持一致 (id=1 對應索引 0, id=2 對應索引 1, ... )
+        const imageUrls = [
+            'T-shirt.png', // T-Shirt
+            'Mug.png', // Mug
+            'Pen.png', // Pen
+            'Tote_Bag.png', // Tote Bag
+            'Keychain.png', // Keychain
+            'Notebook.png' // Notebook
+        ];
+
+        let isLoggedIn = false;
+        let cart = [];
+
+        // DOM Elements
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginButton = document.getElementById('login-button');
+        const logoutButton = document.getElementById('logout-button');
+        const loginForm = document.getElementById('login-form');
+        const loginStatus = document.getElementById('login-status');
+        const productsContainer = document.getElementById('products-container');
+        const cartItemsContainer = document.getElementById('cart-items');
+        const subtotalSpan = document.getElementById('subtotal');
+        const shippingFeeSpan = document.getElementById('shipping-fee');
+        const totalAmountSpan = document.getElementById('total-amount');
+        const checkoutButton = document.getElementById('checkout-button');
+        const checkoutMessage = document.getElementById('checkout-message');
+
+        // --- Functions ---
+
+        // Render products
+        function renderProducts() {
+            productsContainer.innerHTML = '';
+            products.forEach(product => {
+                const productDiv = document.createElement('div');
+                productDiv.classList.add('product-item');
+
+                // 根據 product.id 取得對應的圖片 URL
+                // 假設 product.id 從 1 開始，對應 imageUrls 陣列的索引 (0, 1, 2...)
+                const imageUrl = 'img/' + imageUrls[product.id - 1];
+
+                productDiv.innerHTML = `
+                    <img src="${imageUrl}" alt="${product.name}">
+                    <h3>${product.name}</h3>
+                    <p>$${product.price}</p>
+                    <button class="add-to-cart-button" data-id="${product.id}" ${isLoggedIn ? '' : 'disabled'}>加入購物車</button>
+                    <div class="quantity-input-group" id="quantity-input-${product.id}">
+                        <input type="number" min="1" value="1" class="quantity-input">
+                        <button class="confirm-add-to-cart-button" data-id="${product.id}">確認</button>
+                    </div>
+                `;
+                productsContainer.appendChild(productDiv);
+            });
+            attachProductActionListeners();
+        }
+
+        // Attach event listeners to product actions (show quantity input, confirm add to cart)
+        function attachProductActionListeners() {
+            document.querySelectorAll('.add-to-cart-button').forEach(button => {
+                button.onclick = (event) => {
+                    if (isLoggedIn) {
+                        // Hide all other quantity input groups
+                        document.querySelectorAll('.quantity-input-group.active').forEach(group => {
+                            group.classList.remove('active');
+                            group.querySelector('.quantity-input').value = 1; // Reset quantity
+                        });
+
+                        const productId = parseInt(event.target.dataset.id);
+                        const quantityInputGroup = document.getElementById(`quantity-input-${productId}`);
+                        quantityInputGroup.classList.add('active'); // Show the input group
+                    } else {
+                        alert('請先登入才能將商品加入購物車！');
+                    }
+                };
+            });
+
+            document.querySelectorAll('.confirm-add-to-cart-button').forEach(button => {
+                button.onclick = (event) => {
+                    const productId = parseInt(event.target.dataset.id);
+                    const quantityInputGroup = document.getElementById(`quantity-input-${productId}`);
+                    const quantityInput = quantityInputGroup.querySelector('.quantity-input');
+                    let quantity = parseInt(quantityInput.value);
+
+                    if (isNaN(quantity) || quantity <= 0) {
+                        alert('數量輸入無效，請輸入一個正整數。');
+                        return;
+                    }
+                    addToCart(productId, quantity);
+                    quantityInputGroup.classList.remove('active'); // Hide input group after adding
+                    quantityInput.value = 1; // Reset quantity
+                };
+            });
+        }
+
+        // Add item to cart
+        function addToCart(productId, quantity) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const existingItem = cart.find(item => item.id === productId);
+
+            if (existingItem) {
+                existingItem.quantity += quantity;
+            } else {
+                cart.push({ ...product, quantity: quantity });
+            }
+            renderCart();
+        }
+
+        // Render cart items
+        function renderCart() {
+            cartItemsContainer.innerHTML = '';
+            let subtotal = 0;
+
+            if (cart.length === 0) {
+                cartItemsContainer.innerHTML = '<p>購物車是空的。</p>';
+            } else {
+                cart.forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div class="item-details">
+                            <strong>${item.name}</strong>
+                            <span>單價: $${item.price}</span>
+                        </div>
+                        <div class="cart-item-controls">
+                            <input type="number" min="1" value="${item.quantity}" data-id="${item.id}" class="item-quantity-input">
+                            <button class="remove-item-button" data-id="${item.id}">移除</button>
+                        </div>
+                        <span>小計: $${item.price * item.quantity}</span>
+                    `;
+                    cartItemsContainer.appendChild(li);
+                    subtotal += item.price * item.quantity;
+                });
+            }
+
+            subtotalSpan.textContent = subtotal;
+            const shippingFee = subtotal > 1000 ? 0 : 100;
+            shippingFeeSpan.textContent = shippingFee;
+            totalAmountSpan.textContent = subtotal + shippingFee;
+
+            attachCartItemListeners();
+        }
+
+        // Attach event listeners to cart item controls (quantity change, remove)
+        function attachCartItemListeners() {
+            document.querySelectorAll('.item-quantity-input').forEach(input => {
+                input.onchange = (event) => {
+                    const productId = parseInt(event.target.dataset.id);
+                    const newQuantity = parseInt(event.target.value);
+                    if (isNaN(newQuantity) || newQuantity <= 0) {
+                        alert('數量輸入無效，請輸入一個正整數。');
+                        renderCart(); // Re-render to revert invalid input
+                        return;
+                    }
+                    updateCartQuantity(productId, newQuantity);
+                };
+            });
+
+            document.querySelectorAll('.remove-item-button').forEach(button => {
+                button.onclick = (event) => {
+                    const productId = parseInt(event.target.dataset.id);
+                    removeFromCart(productId);
+                };
+            });
+        }
+
+        // Update item quantity in cart
+        function updateCartQuantity(productId, newQuantity) {
+            const itemIndex = cart.findIndex(item => item.id === productId);
+            if (itemIndex > -1) {
+                cart[itemIndex].quantity = newQuantity;
+                renderCart();
+            }
+        }
+
+        // Remove item from cart
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            renderCart();
+        }
+
+        // Handle login
+        loginButton.onclick = () => {
+            const username = usernameInput.value;
+            const password = passwordInput.value;
+
+            if (username === 'fcu' && password === 'fcu100') {
+                isLoggedIn = true;
+                loginForm.style.display = 'none';
+                loginStatus.style.display = 'block';
+                loginStatus.textContent = '登入成功！';
+                logoutButton.style.display = 'block';
+                renderProducts(); // Re-render products to enable "Add to Cart" buttons
+                checkoutMessage.style.display = 'none'; // Hide checkout message on new login
+            } else {
+                alert('帳號或密碼錯誤！');
+                loginStatus.style.display = 'none';
+            }
+        };
+
+        // Handle logout
+        logoutButton.onclick = () => {
+            isLoggedIn = false;
+            loginForm.style.display = 'flex';
+            usernameInput.value = '';
+            passwordInput.value = '';
+            loginStatus.style.display = 'none';
+            loginStatus.textContent = '';
+            logoutButton.style.display = 'none';
+            cart = []; // Clear cart on logout
+            renderProducts(); // Re-render products to disable "Add to Cart" buttons
+            renderCart(); // Clear cart display
+            checkoutMessage.style.display = 'none';
+        };
+
+        // Handle checkout
+        checkoutButton.onclick = () => {
+            if (cart.length === 0) {
+                alert('購物車是空的，請先加入商品！');
+                return;
+            }
+
+            const totalAmount = parseFloat(totalAmountSpan.textContent);
+            checkoutMessage.textContent = `結帳成功！總金額為 $${totalAmount}。`;
+            checkoutMessage.style.display = 'block';
+
+            // Simulate clearing the cart after successful checkout
+            cart = [];
+            renderCart();
+
+            // Explicitly set shipping fee and total amount to 0 after checkout
+            shippingFeeSpan.textContent = 0; // Clear shipping fee
+            totalAmountSpan.textContent = 0; // Clear total amount
+        };
+
+        // Initial render
+        renderProducts();
+        renderCart();
+    </script>
+</body>
+
+</html>
