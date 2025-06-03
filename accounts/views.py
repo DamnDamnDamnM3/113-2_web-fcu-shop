@@ -1,9 +1,12 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.http import JsonResponse
-from .models import Cart, CartItem
+from .models import Cart, CartItem, Favorite
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+import json
 
 # Create your views here.
 
@@ -25,6 +28,11 @@ def login_view(request):
                 return JsonResponse({"success": False, "error": "帳號或密碼錯誤"})
             messages.error(request, "帳號或密碼錯誤")
     return render(request, "accounts/login.html")
+
+
+def logout_view(request):
+    logout(request)
+    return JsonResponse({"success": True})
 
 
 @login_required
@@ -99,3 +107,63 @@ def get_cart(request):
         for item in items
     ]
     return JsonResponse({"items": cart_data})
+
+
+@login_required
+@require_POST
+def add_to_favorites(request):
+    try:
+        data = json.loads(request.body)
+        product_id = data.get("product_id")
+        product_name = data.get("product_name")
+        price = data.get("price")
+
+        if not all([product_id, product_name, price]):
+            return JsonResponse({"success": False, "error": "缺少必要資訊"})
+
+        favorite, created = Favorite.objects.get_or_create(
+            user=request.user,
+            product_id=product_id,
+            defaults={"product_name": product_name, "price": price},
+        )
+
+        if not created:
+            return JsonResponse({"success": False, "error": "商品已在收藏清單中"})
+
+        return JsonResponse({"success": True, "message": "已加入收藏"})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)})
+
+
+@login_required
+@require_POST
+def remove_from_favorites(request):
+    try:
+        data = json.loads(request.body)
+        product_id = data.get("product_id")
+
+        if not product_id:
+            return JsonResponse({"success": False, "error": "缺少商品ID"})
+
+        Favorite.objects.filter(user=request.user, product_id=product_id).delete()
+        return JsonResponse({"success": True, "message": "已從收藏清單中移除"})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)})
+
+
+@login_required
+def get_favorites(request):
+    try:
+        favorites = Favorite.objects.filter(user=request.user)
+        favorites_list = [
+            {
+                "id": fav.id,
+                "product_id": fav.product_id,
+                "product_name": fav.product_name,
+                "price": float(fav.price),
+            }
+            for fav in favorites
+        ]
+        return JsonResponse({"success": True, "favorites": favorites_list})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)})

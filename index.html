@@ -131,6 +131,21 @@
             cursor: not-allowed;
         }
 
+        .favorite-button {
+            background-color: #ffc107;
+            color: #000;
+            margin-left: 10px;
+        }
+
+        .favorite-button:hover {
+            background-color: #e0a800;
+        }
+
+        .favorite-button.active {
+            background-color: #dc3545;
+            color: white;
+        }
+
         .quantity-input-group {
             display: flex;
             align-items: center;
@@ -283,6 +298,49 @@
             display: none;
             /* Hidden by default */
         }
+
+        .favorites-section {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .favorites-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        #favorites-items {
+            list-style: none;
+            padding: 0;
+        }
+
+        #favorites-items li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px dashed #eee;
+        }
+
+        #favorites-items li:last-child {
+            border-bottom: none;
+        }
+
+        .favorite-item-details {
+            display: flex;
+            flex-direction: column;
+            flex: 2;
+        }
+
+        .favorite-item-details strong {
+            font-size: 1.1em;
+        }
+
+        .favorite-item-details span {
+            font-size: 0.9em;
+            color: #666;
+        }
     </style>
 </head>
 
@@ -302,6 +360,12 @@
         </header>
 
         <section class="products-grid" id="products-container">
+        </section>
+
+        <section class="favorites-section">
+            <h2>我的收藏</h2>
+            <ul id="favorites-items">
+            </ul>
         </section>
 
         <section class="cart-section">
@@ -343,6 +407,7 @@
 
         let isLoggedIn = false;
         let cart = [];
+        let favorites = [];
 
         // DOM Elements
         const usernameInput = document.getElementById('username');
@@ -368,15 +433,19 @@
                 const productDiv = document.createElement('div');
                 productDiv.classList.add('product-item');
 
-                // 根據 product.id 取得對應的圖片 URL
-                // 假設 product.id 從 1 開始，對應 imageUrls 陣列的索引 (0, 1, 2...)
                 const imageUrl = '/static/' + imageUrls[product.id - 1];
+                const isFavorite = favorites.some(fav => fav.product_id === product.id);
 
                 productDiv.innerHTML = `
                     <img src="${imageUrl}" alt="${product.name}">
                     <h3>${product.name}</h3>
                     <p>$${product.price}</p>
-                    <button class="add-to-cart-button" data-id="${product.id}" ${isLoggedIn ? '' : 'disabled'}>加入購物車</button>
+                    <div class="button-group">
+                        <button class="add-to-cart-button" data-id="${product.id}" ${isLoggedIn ? '' : 'disabled'}>加入購物車</button>
+                        <button class="favorite-button ${isFavorite ? 'active' : ''}" data-id="${product.id}" ${isLoggedIn ? '' : 'disabled'}>
+                            ${isFavorite ? '❤️' : '🤍'}
+                        </button>
+                    </div>
                     <div class="quantity-input-group" id="quantity-input-${product.id}">
                         <input type="number" min="1" value="1" class="quantity-input">
                         <button class="confirm-add-to-cart-button" data-id="${product.id}">確認</button>
@@ -485,6 +554,13 @@
                     }
                 };
             });
+
+            document.querySelectorAll('.favorite-button').forEach(button => {
+                button.onclick = (event) => {
+                    const productId = parseInt(event.target.dataset.id);
+                    toggleFavorite(productId);
+                };
+            });
         }
 
         function updateCartDisplay() {
@@ -584,6 +660,107 @@
                 });
         }
 
+        function updateFavoritesDisplay() {
+            if (!isLoggedIn) {
+                favorites = [];
+                renderFavoritesUI();
+                return;
+            }
+
+            fetch('/accounts/favorites/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        favorites = data.favorites;
+                        renderFavoritesUI();
+                        renderProducts(); // Re-render products to update favorite buttons
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        function renderFavoritesUI() {
+            const favoritesList = document.getElementById("favorites-items");
+            favoritesList.innerHTML = "";
+
+            favorites.forEach((item) => {
+                const li = document.createElement("li");
+                li.innerHTML = `
+                    <div class="favorite-item-details">
+                        <strong>${item.product_name}</strong>
+                        <span>$${item.price}</span>
+                    </div>
+                    <div class="favorite-item-controls">
+                        <button onclick="addToCart(${item.product_id}, '${item.product_name}', ${item.price})">加入購物車</button>
+                        <button onclick="removeFromFavorites(${item.product_id})">移除收藏</button>
+                    </div>
+                `;
+                favoritesList.appendChild(li);
+            });
+        }
+
+        function toggleFavorite(productId) {
+            if (!isLoggedIn) {
+                alert('請先登入才能收藏商品！');
+                return;
+            }
+
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const isFavorite = favorites.some(fav => fav.product_id === productId);
+            const endpoint = isFavorite ? '/accounts/favorites/remove/' : '/accounts/favorites/add/';
+            const data = isFavorite ?
+                { product_id: productId } :
+                { product_id: productId, product_name: product.name, price: product.price };
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateFavoritesDisplay();
+                    } else {
+                        alert(data.error || '操作失敗');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('操作失敗');
+                });
+        }
+
+        function removeFromFavorites(productId) {
+            fetch('/accounts/favorites/remove/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify({ product_id: productId })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateFavoritesDisplay();
+                    } else {
+                        alert(data.error || '移除收藏失敗');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('移除收藏失敗');
+                });
+        }
+
         loginButton.onclick = () => {
             const username = usernameInput.value;
             const password = passwordInput.value;
@@ -611,6 +788,7 @@
                         loginStatus.textContent = '登入成功！';
                         logoutButton.style.display = 'block';
                         renderProducts();
+                        updateFavoritesDisplay();
                         checkoutMessage.style.display = 'none';
                     } else {
                         alert(data.error || '帳號或密碼錯誤！');
@@ -632,9 +810,11 @@
             loginStatus.style.display = 'none';
             loginStatus.textContent = '';
             logoutButton.style.display = 'none';
-            cart = []; // Clear cart on logout
-            renderProducts(); // Re-render products to disable "Add to Cart" buttons
-            renderCart(); // Clear cart display
+            cart = [];
+            favorites = [];
+            renderProducts();
+            renderCart();
+            renderFavoritesUI();
             checkoutMessage.style.display = 'none';
         };
 
@@ -661,6 +841,7 @@
         // Initial render
         renderProducts();
         renderCart();
+        updateFavoritesDisplay();
     </script>
 </body>
 

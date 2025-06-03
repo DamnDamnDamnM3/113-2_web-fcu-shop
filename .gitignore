@@ -6,7 +6,4 @@ __pycache__/
 *.pyw
 *.pyz
 *.pywz
-migrations/
-accounts/__pycache__/models.cpython-313.pyc
-accounts/__pycache__/views.cpython-313.pyc
-accounts/__pycache__/urls.cpython-313.pyc
+accounts/__pycache__/
