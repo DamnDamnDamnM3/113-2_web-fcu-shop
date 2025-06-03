@@ -370,7 +370,7 @@
 
                 // 根據 product.id 取得對應的圖片 URL
                 // 假設 product.id 從 1 開始，對應 imageUrls 陣列的索引 (0, 1, 2...)
-                const imageUrl = '/static/' + imageUrls[product.id - 1];
+                const imageUrl = 'img/' + imageUrls[product.id - 1];
 
                 productDiv.innerHTML = `
                     <img src="${imageUrl}" alt="${product.name}">
@@ -512,48 +512,23 @@
             renderCart();
         }
 
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-
+        // Handle login
         loginButton.onclick = () => {
             const username = usernameInput.value;
             const password = passwordInput.value;
-            fetch('/accounts/login/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': getCookie('csrftoken'),
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        isLoggedIn = true;
-                        loginForm.style.display = 'none';
-                        loginStatus.style.display = 'block';
-                        loginStatus.textContent = '登入成功！';
-                        logoutButton.style.display = 'block';
-                        renderProducts();
-                        checkoutMessage.style.display = 'none';
-                    } else {
-                        alert(data.error || '帳號或密碼錯誤！');
-                        loginStatus.style.display = 'none';
-                    }
-                });
+
+            if (username === 'fcu' && password === 'fcu100') {
+                isLoggedIn = true;
+                loginForm.style.display = 'none';
+                loginStatus.style.display = 'block';
+                loginStatus.textContent = '登入成功！';
+                logoutButton.style.display = 'block';
+                renderProducts(); // Re-render products to enable "Add to Cart" buttons
+                checkoutMessage.style.display = 'none'; // Hide checkout message on new login
+            } else {
+                alert('帳號或密碼錯誤！');
+                loginStatus.style.display = 'none';
+            }
         };
 
         // Handle logout
