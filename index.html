@@ -387,6 +387,58 @@
             attachProductActionListeners();
         }
 
+        // 購物車功能
+        function addToCart(productId, productName, price) {
+            if (!isLoggedIn) {
+                alert("請先登入");
+                return;
+            }
+
+            console.log('Adding to cart:', { productId, productName, price }); // 添加日誌
+
+            fetch('/accounts/cart/add/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: `product_id=${productId}&product_name=${encodeURIComponent(productName)}&price=${price}&quantity=1`
+            })
+                .then(response => {
+                    console.log('Response status:', response.status); // 添加日誌
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Response data:', data); // 添加日誌
+                    if (data.success) {
+                        alert(data.message);
+                        updateCartDisplay();
+                    } else {
+                        alert(data.error || '加入購物車失敗');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('加入購物車失敗');
+                });
+        }
+
+        function getCSRFToken() {
+            const name = 'csrftoken';
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
         // Attach event listeners to product actions (show quantity input, confirm add to cart)
         function attachProductActionListeners() {
             document.querySelectorAll('.add-to-cart-button').forEach(button => {
@@ -409,7 +461,9 @@
 
             document.querySelectorAll('.confirm-add-to-cart-button').forEach(button => {
                 button.onclick = (event) => {
+                    console.log('Confirm button clicked'); // 添加日誌
                     const productId = parseInt(event.target.dataset.id);
+                    console.log('Product ID:', productId); // 添加日誌
                     const quantityInputGroup = document.getElementById(`quantity-input-${productId}`);
                     const quantityInput = quantityInputGroup.querySelector('.quantity-input');
                     let quantity = parseInt(quantityInput.value);
@@ -418,129 +472,138 @@
                         alert('數量輸入無效，請輸入一個正整數。');
                         return;
                     }
-                    addToCart(productId, quantity);
-                    quantityInputGroup.classList.remove('active'); // Hide input group after adding
-                    quantityInput.value = 1; // Reset quantity
+
+                    const product = products.find(p => p.id === productId);
+                    console.log('Found product:', product); // 添加日誌
+                    if (product) {
+                        addToCart(productId, product.name, product.price);
+                        quantityInputGroup.classList.remove('active'); // Hide input group after adding
+                        quantityInput.value = 1; // Reset quantity
+                    } else {
+                        console.error('Product not found:', productId); // 添加日誌
+                        alert('找不到商品資訊');
+                    }
                 };
             });
         }
 
-        // Add item to cart
-        function addToCart(productId, quantity) {
-            const product = products.find(p => p.id === productId);
-            if (!product) return;
-
-            const existingItem = cart.find(item => item.id === productId);
-
-            if (existingItem) {
-                existingItem.quantity += quantity;
-            } else {
-                cart.push({ ...product, quantity: quantity });
+        function updateCartDisplay() {
+            if (!isLoggedIn) {
+                cartItems = [];
+                updateCartUI();
+                return;
             }
-            renderCart();
+
+            fetch('/accounts/cart/')
+                .then(response => response.json())
+                .then(data => {
+                    cartItems = data.items;
+                    updateCartUI();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
         }
 
-        // Render cart items
-        function renderCart() {
-            cartItemsContainer.innerHTML = '';
+        function updateCartUI() {
+            const cartList = document.getElementById("cart-items");
+            const subtotalSpan = document.getElementById("subtotal");
+            const shippingFeeSpan = document.getElementById("shipping-fee");
+            const totalAmountSpan = document.getElementById("total-amount");
+
+            cartList.innerHTML = "";
             let subtotal = 0;
 
-            if (cart.length === 0) {
-                cartItemsContainer.innerHTML = '<p>購物車是空的。</p>';
-            } else {
-                cart.forEach(item => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `
-                        <div class="item-details">
-                            <strong>${item.name}</strong>
-                            <span>單價: $${item.price}</span>
-                        </div>
-                        <div class="cart-item-controls">
-                            <input type="number" min="1" value="${item.quantity}" data-id="${item.id}" class="item-quantity-input">
-                            <button class="remove-item-button" data-id="${item.id}">移除</button>
-                        </div>
-                        <span>小計: $${item.price * item.quantity}</span>
-                    `;
-                    cartItemsContainer.appendChild(li);
-                    subtotal += item.price * item.quantity;
-                });
-            }
+            cartItems.forEach((item) => {
+                const li = document.createElement("li");
+                li.innerHTML = `
+                    ${item.product_name} x ${item.quantity} - $${item.price * item.quantity}
+                    <button onclick="updateCartItem(${item.id}, ${item.quantity - 1})">-</button>
+                    <button onclick="updateCartItem(${item.id}, ${item.quantity + 1})">+</button>
+                    <button onclick="removeFromCart(${item.id})">刪除</button>
+                `;
+                cartList.appendChild(li);
+                subtotal += item.price * item.quantity;
+            });
 
+            // 更新總金額
             subtotalSpan.textContent = subtotal;
             const shippingFee = subtotal > 1000 ? 0 : 100;
             shippingFeeSpan.textContent = shippingFee;
             totalAmountSpan.textContent = subtotal + shippingFee;
-
-            attachCartItemListeners();
         }
 
-        // Attach event listeners to cart item controls (quantity change, remove)
-        function attachCartItemListeners() {
-            document.querySelectorAll('.item-quantity-input').forEach(input => {
-                input.onchange = (event) => {
-                    const productId = parseInt(event.target.dataset.id);
-                    const newQuantity = parseInt(event.target.value);
-                    if (isNaN(newQuantity) || newQuantity <= 0) {
-                        alert('數量輸入無效，請輸入一個正整數。');
-                        renderCart(); // Re-render to revert invalid input
-                        return;
-                    }
-                    updateCartQuantity(productId, newQuantity);
-                };
-            });
-
-            document.querySelectorAll('.remove-item-button').forEach(button => {
-                button.onclick = (event) => {
-                    const productId = parseInt(event.target.dataset.id);
-                    removeFromCart(productId);
-                };
-            });
-        }
-
-        // Update item quantity in cart
-        function updateCartQuantity(productId, newQuantity) {
-            const itemIndex = cart.findIndex(item => item.id === productId);
-            if (itemIndex > -1) {
-                cart[itemIndex].quantity = newQuantity;
-                renderCart();
+        function updateCartItem(itemId, newQuantity) {
+            if (newQuantity < 1) {
+                removeFromCart(itemId);
+                return;
             }
-        }
 
-        // Remove item from cart
-        function removeFromCart(productId) {
-            cart = cart.filter(item => item.id !== productId);
-            renderCart();
-        }
-
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
+            fetch('/accounts/cart/update/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: `item_id=${itemId}&quantity=${newQuantity}`
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateCartDisplay();
+                    } else {
+                        alert(data.error || '更新購物車失敗');
                     }
-                }
-            }
-            return cookieValue;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('更新購物車失敗');
+                });
+        }
+
+        function removeFromCart(itemId) {
+            fetch('/accounts/cart/remove/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: `item_id=${itemId}`
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateCartDisplay();
+                    } else {
+                        alert(data.error || '刪除商品失敗');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('刪除商品失敗');
+                });
         }
 
         loginButton.onclick = () => {
             const username = usernameInput.value;
             const password = passwordInput.value;
+            console.log('Login attempt:', { username }); // 添加日誌
+
             fetch('/accounts/login/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-CSRFToken': getCSRFToken(),
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
             })
-                .then(response => response.json())
+                .then(response => {
+                    console.log('Login response status:', response.status); // 添加日誌
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Login response data:', data); // 添加日誌
                     if (data.success) {
                         isLoggedIn = true;
                         loginForm.style.display = 'none';
@@ -553,6 +616,10 @@
                         alert(data.error || '帳號或密碼錯誤！');
                         loginStatus.style.display = 'none';
                     }
+                })
+                .catch(error => {
+                    console.error('Login error:', error);
+                    alert('登入失敗，請稍後再試');
                 });
         };
 
